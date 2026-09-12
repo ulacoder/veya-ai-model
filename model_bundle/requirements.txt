@@ -1,0 +1,4 @@
+torch
+timm
+torchvision
+pillow

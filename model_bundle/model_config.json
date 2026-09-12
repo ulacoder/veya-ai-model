@@ -1,0 +1,19 @@
+{
+  "backbone": "efficientnet_b4",
+  "image_size": 512,
+  "targets": {
+    "dr_grade": "multiclass",
+    "glaucoma": "binary",
+    "cataract": "binary"
+  },
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ]
+}

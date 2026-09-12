@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: veya-inference
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: true

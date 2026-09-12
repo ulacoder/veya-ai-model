@@ -1,0 +1,134 @@
+[
+  {
+    "epoch": 1,
+    "train_loss": 0.29157721839641876,
+    "loss": 0.22157401717110967,
+    "dr_grade_accuracy": 0.8069823434991974,
+    "dr_grade_kappa": 0.5295322844757884,
+    "glaucoma_accuracy": 0.956661316211878,
+    "glaucoma_auc": 0.6599385863097424,
+    "cataract_accuracy": 0.9646869983948636,
+    "cataract_auc": 0.8688118509841246
+  },
+  {
+    "epoch": 2,
+    "train_loss": 0.2233895216059436,
+    "loss": 0.19021762699414985,
+    "dr_grade_accuracy": 0.8326645264847512,
+    "dr_grade_kappa": 0.5845703640332292,
+    "glaucoma_accuracy": 0.9686998394863563,
+    "glaucoma_auc": 0.789268765702364,
+    "cataract_accuracy": 0.9715088282504013,
+    "cataract_auc": 0.8437859208551451
+  },
+  {
+    "epoch": 3,
+    "train_loss": 0.18369307839887195,
+    "loss": 0.16372346663982107,
+    "dr_grade_accuracy": 0.8639646869983949,
+    "dr_grade_kappa": 0.6877063688399871,
+    "glaucoma_accuracy": 0.9674959871589085,
+    "glaucoma_auc": 0.7498067966442854,
+    "cataract_accuracy": 0.9743178170144462,
+    "cataract_auc": 0.9261729570108967
+  },
+  {
+    "epoch": 4,
+    "train_loss": 0.14895351955825598,
+    "loss": 0.12237284115155378,
+    "dr_grade_accuracy": 0.8992776886035313,
+    "dr_grade_kappa": 0.7684902931235371,
+    "glaucoma_accuracy": 0.9795345104333868,
+    "glaucoma_auc": 0.875901738095588,
+    "cataract_accuracy": 0.9807383627608347,
+    "cataract_auc": 0.9009310441605349
+  },
+  {
+    "epoch": 5,
+    "train_loss": 0.11681699071432289,
+    "loss": 0.12024721387403017,
+    "dr_grade_accuracy": 0.9065008025682183,
+    "dr_grade_kappa": 0.781612342688642,
+    "glaucoma_accuracy": 0.9835473515248796,
+    "glaucoma_auc": 0.9233254484815538,
+    "cataract_accuracy": 0.9839486356340289,
+    "cataract_auc": 0.9652719307879098
+  },
+  {
+    "epoch": 6,
+    "train_loss": 0.09312431793099338,
+    "loss": 0.0935763634597796,
+    "dr_grade_accuracy": 0.9273675762439807,
+    "dr_grade_kappa": 0.8328498519909697,
+    "glaucoma_accuracy": 0.9879614767255217,
+    "glaucoma_auc": 0.9353745794337599,
+    "cataract_accuracy": 0.9883627608346709,
+    "cataract_auc": 0.9728654927944748
+  },
+  {
+    "epoch": 7,
+    "train_loss": 0.07146763989081857,
+    "loss": 0.09153646126652606,
+    "dr_grade_accuracy": 0.9382022471910112,
+    "dr_grade_kappa": 0.8564180998617189,
+    "glaucoma_accuracy": 0.9899678972712681,
+    "glaucoma_auc": 0.9332045310961903,
+    "cataract_accuracy": 0.9891653290529695,
+    "cataract_auc": 0.9732974582372392
+  },
+  {
+    "epoch": 8,
+    "train_loss": 0.05723245015586868,
+    "loss": 0.08703308037398488,
+    "dr_grade_accuracy": 0.9410112359550562,
+    "dr_grade_kappa": 0.8674212867725297,
+    "glaucoma_accuracy": 0.9867576243980738,
+    "glaucoma_auc": 0.9347354656715103,
+    "cataract_accuracy": 0.9919743178170144,
+    "cataract_auc": 0.9800270893582751
+  },
+  {
+    "epoch": 9,
+    "train_loss": 0.049380860148845344,
+    "loss": 0.08075995876713182,
+    "dr_grade_accuracy": 0.9510433386837881,
+    "dr_grade_kappa": 0.8898696797489227,
+    "glaucoma_accuracy": 0.9879614767255217,
+    "glaucoma_auc": 0.938609817375079,
+    "cataract_accuracy": 0.9923756019261637,
+    "cataract_auc": 0.9802430720796574
+  },
+  {
+    "epoch": 10,
+    "train_loss": 0.04183589492911992,
+    "loss": 0.08088198123424259,
+    "dr_grade_accuracy": 0.9530497592295345,
+    "dr_grade_kappa": 0.8942880968782858,
+    "glaucoma_accuracy": 0.9899678972712681,
+    "glaucoma_auc": 0.9396750069788284,
+    "cataract_accuracy": 0.9915730337078652,
+    "cataract_auc": 0.9824199826725726
+  },
+  {
+    "epoch": 11,
+    "train_loss": 0.041577515031721586,
+    "loss": 0.07942096263310015,
+    "dr_grade_accuracy": 0.9518459069020867,
+    "dr_grade_kappa": 0.8910870895370181,
+    "glaucoma_accuracy": 0.9907704654895666,
+    "glaucoma_auc": 0.9401010828203282,
+    "cataract_accuracy": 0.9919743178170144,
+    "cataract_auc": 0.9800270893582751
+  },
+  {
+    "epoch": 12,
+    "train_loss": 0.038574639365004514,
+    "loss": 0.08120795252623057,
+    "dr_grade_accuracy": 0.9506420545746388,
+    "dr_grade_kappa": 0.8884651716564222,
+    "glaucoma_accuracy": 0.9895666131621188,
+    "glaucoma_auc": 0.9394619690580785,
+    "cataract_accuracy": 0.9915730337078652,
+    "cataract_auc": 0.9798111066368927
+  }
+]
