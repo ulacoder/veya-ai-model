@@ -16,10 +16,14 @@ class VeyaFundusModel(nn.Module):
 
 def load_model(bundle_dir=".", device=None):
     device=device or ("cuda" if torch.cuda.is_available() else "cpu")
+    if device == "cpu":
+        torch.set_num_threads(1)
+        torch.set_num_interop_threads(1)
     with open(f"{bundle_dir}/model_config.json") as f: config=json.load(f)
     model=VeyaFundusModel(config)
-    state=torch.load(f"{bundle_dir}/best_model.pth", map_location=device)
+    state=torch.load(f"{bundle_dir}/best_model.pth", map_location=device, weights_only=True)
     model.load_state_dict(state["model_state_dict"]); model.to(device).eval()
+    del state
     return model, config, device
 
 def predict(image_path, bundle_dir="."):
