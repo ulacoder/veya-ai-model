@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 import sys
 
@@ -26,17 +27,22 @@ _config = None
 _device = None
 
 
-@app.get("/")
-def root():
-    return {"service": "VEYA Fundus Inference API", "status": "online", "health": "/health", "docs": "/docs", "predict": "/predict"}
-
-
-@app.get("/health")
-def health():
+def get_runtime():
     global _model, _config, _device
     if _model is None:
         _model, _config, _device = load_model(str(BUNDLE_DIR))
     return _model, _config, _device
+
+
+@app.get("/")
+def root():
+    return {
+        "service": "VEYA Fundus Inference API",
+        "status": "online",
+        "health": "/health",
+        "docs": "/docs",
+        "predict": "/predict",
+    }
 
 
 @app.get("/health")
@@ -54,7 +60,6 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=415, detail="Upload a JPG, PNG, or other image file")
 
     try:
-        from io import BytesIO
         from PIL import Image
         import torch
         from torchvision import transforms
