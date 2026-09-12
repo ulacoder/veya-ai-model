@@ -66,9 +66,10 @@ async def predict(file: UploadFile = File(...)):
 
         model, config, device = get_runtime()
         image = Image.open(BytesIO(await file.read())).convert("RGB")
+        inference_size = min(int(config["image_size"]), 256)
         transform = transforms.Compose(
             [
-                transforms.Resize((config["image_size"], config["image_size"])),
+                transforms.Resize((inference_size, inference_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(config["mean"], config["std"]),
             ]
