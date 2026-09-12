@@ -26,7 +26,13 @@ _config = None
 _device = None
 
 
-def get_runtime():
+@app.get("/")
+def root():
+    return {"service": "VEYA Fundus Inference API", "status": "online", "health": "/health", "docs": "/docs", "predict": "/predict"}
+
+
+@app.get("/health")
+def health():
     global _model, _config, _device
     if _model is None:
         _model, _config, _device = load_model(str(BUNDLE_DIR))
