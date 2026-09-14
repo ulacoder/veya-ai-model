@@ -60,13 +60,17 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=415, detail="Upload a JPG, PNG, or other image file")
 
     try:
+        import time
         from PIL import Image
         import torch
         from torchvision import transforms
 
+        start_time = time.time()
         model, config, device = get_runtime()
         image = Image.open(BytesIO(await file.read())).convert("RGB")
-        inference_size = min(int(config["image_size"]), 256)
+        print(f"[INFERENCE] Image loaded: {image.size}, file: {file.filename}")
+
+        inference_size = int(config["image_size"])
         transform = transforms.Compose(
             [
                 transforms.Resize((inference_size, inference_size)),
@@ -74,8 +78,14 @@ async def predict(file: UploadFile = File(...)):
                 transforms.Normalize(config["mean"], config["std"]),
             ]
         )
+        tensor = transform(image).unsqueeze(0).to(device)
+        print(f"[INFERENCE] Tensor shape: {tensor.shape}, device: {device}")
+
         with torch.inference_mode():
-            outputs = model(transform(image).unsqueeze(0).to(device))
+            outputs = model(tensor)
+
+        inference_time = time.time() - start_time
+        print(f"[INFERENCE] Inference took {inference_time:.2f}s")
 
         result = {}
         for name, kind in config["targets"].items():
@@ -87,9 +97,11 @@ async def predict(file: UploadFile = File(...)):
                     "probabilities": probabilities,
                     "confidence": max(probabilities),
                 }
+                print(f"[INFERENCE] {name}: class={class_index}, probs={[f'{p:.3f}' for p in probabilities]}")
             else:
                 probability = float(torch.sigmoid(outputs[name].squeeze()).detach().cpu())
                 result[name] = {"probability": probability, "positive": probability >= 0.5}
+                print(f"[INFERENCE] {name}: prob={probability:.3f}, positive={probability >= 0.5}")
 
         return {"model": "veya-fundus-efficientnet-b4", "result": result}
     except Exception as exc:
