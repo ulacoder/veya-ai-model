@@ -1,7 +1,12 @@
-VEYA model bundle
+# VEYA Model Bundle
 
-Files: best_model.pth, model_config.json, inference.py.
+**Files:** `best_model.pth`, `model_config.json`, `inference.py`, `requirements.txt`
 
-Run: from inference import predict; print(predict("fundus.jpg", "."))
+**Usage:**
+```python
+from inference import predict
+result = predict("fundus.jpg", ".")
+print(result)
+```
 
-This model is a screening aid, not a diagnosis. Validate clinically before deployment.
+**Disclaimer:** This model is a screening aid, not a diagnostic tool. Clinical validation required before deployment.
