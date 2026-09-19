@@ -38,10 +38,13 @@ def get_runtime():
 def root():
     return {
         "service": "VEYA Fundus Inference API",
+        "version": "1.0.0",
         "status": "online",
-        "health": "/health",
-        "docs": "/docs",
-        "predict": "/predict",
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "predict": "/predict"
+        }
     }
 
 
