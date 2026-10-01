@@ -40,7 +40,12 @@ jobs:
           user = api.whoami()["name"]
           space = f"{user}/{os.environ['HF_SPACE_NAME']}"
 
-          api.create_repo(space, repo_type="space", space_sdk="docker", exist_ok=True)
+          api.create_repo(space, repo_type="space", space_sdk="docker",
+                          space_hardware="cpu-basic", exist_ok=True)
+          # Free CPU (2 vCPU / 16 GB). ZeroGPU only works with the Gradio SDK.
+          runtime = api.get_space_runtime(space)
+          if runtime.requested_hardware != "cpu-basic":
+              api.request_space_hardware(space, "cpu-basic")
           api.upload_folder(
               repo_id=space,
               repo_type="space",
