@@ -25,7 +25,7 @@ jobs:
       - name: Upload to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_NAME: ${{ vars.HF_SPACE_NAME || 'veya-inference' }}
+          HF_SPACE_NAME: ${{ vars.HF_SPACE_NAME || 'veya-api' }}
         run: |
           if [ -z "$HF_TOKEN" ]; then
             echo "::warning::HF_TOKEN secret is not set — skipping deploy."
@@ -40,12 +40,15 @@ jobs:
           user = api.whoami()["name"]
           space = f"{user}/{os.environ['HF_SPACE_NAME']}"
 
+          # Free CPU (2 vCPU / 16 GB) must be set at creation time:
+          # free accounts can't switch hardware afterwards, and ZeroGPU needs Gradio.
           api.create_repo(space, repo_type="space", space_sdk="docker",
                           space_hardware="cpu-basic", exist_ok=True)
-          # Free CPU (2 vCPU / 16 GB). ZeroGPU only works with the Gradio SDK.
-          runtime = api.get_space_runtime(space)
-          if runtime.requested_hardware != "cpu-basic":
-              api.request_space_hardware(space, "cpu-basic")
+          requested = api.get_space_runtime(space).requested_hardware
+          print(f"Space hardware: {requested}")
+          if requested not in (None, "cpu-basic"):
+              print(f"::warning::Space hardware is {requested}, expected cpu-basic. "
+                    "Change it in the Space settings or recreate the Space.")
           api.upload_folder(
               repo_id=space,
               repo_type="space",
