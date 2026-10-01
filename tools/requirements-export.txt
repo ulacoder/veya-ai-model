@@ -1,0 +1,5 @@
+# Only needed to re-export model.onnx after retraining (not used by the server)
+torch==2.5.1
+torchvision==0.20.1
+timm==1.0.12
+onnx

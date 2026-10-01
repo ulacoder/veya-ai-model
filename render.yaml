@@ -2,8 +2,9 @@ services:
   - type: web
     name: veya-inference
     runtime: docker
-    # EfficientNet-B4 + PyTorch needs ~0.8–0.9 GB RAM; Free/Starter (512 MB) get OOM-killed.
-    plan: standard
+    # ONNX Runtime build peaks at ~310 MB RAM, so the free 512 MB instance is enough.
+    # Free instances sleep after ~15 min idle; first request after that takes ~1 min.
+    plan: free
     region: frankfurt
     healthCheckPath: /health
     autoDeploy: true

@@ -1,8 +1,7 @@
 name: Deploy to Hugging Face Space
 
+# Manual only: Docker Spaces on free cpu-basic now require a Hugging Face PRO plan.
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 jobs:
@@ -19,7 +18,8 @@ jobs:
         run: |
           mkdir -p space
           cp Dockerfile main.py requirements.txt space/
-          cp -r model_bundle space/
+          mkdir -p space/model_bundle
+          cp model_bundle/model.onnx model_bundle/model_config.json space/model_bundle/
           cp deploy/huggingface/README.md space/README.md
 
       - name: Upload to Hugging Face

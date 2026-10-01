@@ -1,0 +1,8 @@
+.git
+.github
+__pycache__
+**/__pycache__
+model_bundle/best_model.pth
+model_bundle/training_history.json
+tools
+deploy
