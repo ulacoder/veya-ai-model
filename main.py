@@ -34,6 +34,16 @@ def get_runtime():
     return _model, _config, _device
 
 
+@app.on_event("startup")
+def preload_model():
+    # Load weights at boot so the first /predict from the platform isn't slow.
+    try:
+        get_runtime()
+        print("[STARTUP] Model loaded")
+    except Exception as exc:  # health check will report it
+        print(f"[STARTUP] Model failed to load: {exc}")
+
+
 @app.get("/")
 def root():
     return {
