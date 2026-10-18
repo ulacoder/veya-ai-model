@@ -44,6 +44,28 @@ def load_preds(pred_dir, models, split):
         f = Path(pred_dir) / f"{m}_{split}.npz"
         if f.exists():
             out[m] = dict(np.load(f, allow_pickle=True))
+    return align_preds(out)
+
+
+def align_preds(out):
+    """Модели с Kaggle обучены на чуть другом делении (±20 снимков). Оставляем только снимки,
+    которые попали в эту же часть у ВСЕХ моделей, и ставим их в одинаковом порядке —
+    так ни одна модель не оценивается на снимке, который видела при обучении."""
+    if len(out) < 2:
+        return out
+    ids0 = [str(i) for i in next(iter(out.values()))["image_id"]]
+    common = set(ids0)
+    for p in out.values():
+        common &= set(str(i) for i in p["image_id"])
+    keep = [i for i in ids0 if i in common]
+    for m, p in out.items():
+        ids = [str(i) for i in p["image_id"]]
+        n = len(ids)
+        pos = {i: k for k, i in enumerate(ids)}
+        idx = np.array([pos[i] for i in keep], dtype=np.int64)
+        out[m] = {k: (v[idx] if hasattr(v, "shape") and v.ndim >= 1 and len(v) == n else v) for k, v in p.items()}
+        if len(keep) != n:
+            print(f"  [{m}] выравнивание: {n} → {len(keep)} общих снимков")
     return out
 
 
