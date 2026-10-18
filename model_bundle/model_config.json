@@ -1,19 +1,129 @@
 {
-  "backbone": "efficientnet_b4",
-  "image_size": 512,
-  "targets": {
-    "dr_grade": "multiclass",
-    "glaucoma": "binary",
-    "cataract": "binary"
-  },
-  "mean": [
-    0.485,
-    0.456,
-    0.406
+ "format": "veya-v2",
+ "model_name": "veya-v2-effv2s",
+ "backbone": "tf_efficientnetv2_s.in21k_ft_in1k",
+ "image_size": 512,
+ "input": "RGB float32 0..255, NCHW, after crop_fundus (black borders cropped, centered square)",
+ "outputs": {
+  "dr_grade": "probs[5]",
+  "dr": "prob",
+  "glaucoma": "prob",
+  "cataract": "prob"
+ },
+ "dr_grade_names": [
+  "нет ДР",
+  "лёгкая",
+  "умеренная",
+  "тяжёлая",
+  "пролиферативная"
+ ],
+ "thresholds": {
+  "dr": 0.5437822282615816,
+  "glaucoma": 0.4219401562354259,
+  "cataract": 0.41041186634843885
+ },
+ "doubt_zones": {
+  "dr": [
+   0.2687822282615816,
+   0.8187822282615816
   ],
-  "std": [
-    0.229,
-    0.224,
-    0.225
+  "glaucoma": [
+   0.1669401562354259,
+   0.6769401562354259
+  ],
+  "cataract": [
+   0.41041186634843885,
+   0.41041186634843885
   ]
+ },
+ "metrics": {
+  "test": {
+   "dr": {
+    "n": 11183.0,
+    "positives": 3282.0,
+    "auc": 0.9388,
+    "accuracy": 0.8972,
+    "sensitivity": 0.8455,
+    "specificity": 0.9186,
+    "balanced_accuracy": 0.8821,
+    "confident_share": 0.7514,
+    "accuracy_confident": 0.9449
+   },
+   "glaucoma": {
+    "n": 2036.0,
+    "positives": 451.0,
+    "auc": 0.9723,
+    "accuracy": 0.9106,
+    "sensitivity": 0.918,
+    "specificity": 0.9085,
+    "balanced_accuracy": 0.9132,
+    "confident_share": 0.8762,
+    "accuracy_confident": 0.9624
+   },
+   "cataract": {
+    "n": 730.0,
+    "positives": 34.0,
+    "auc": 0.9637,
+    "accuracy": 0.989,
+    "sensitivity": 0.8529,
+    "specificity": 0.9957,
+    "balanced_accuracy": 0.9243,
+    "confident_share": 1.0,
+    "accuracy_confident": 0.989
+   },
+   "dr_grade": {
+    "n": 11176,
+    "accuracy": 0.8421,
+    "qwk": 0.8466
+   }
+  },
+  "test_ext": {
+   "dr": {
+    "n": 510.0,
+    "positives": 342.0,
+    "auc": 0.9729,
+    "accuracy": 0.8529,
+    "sensitivity": 0.9883,
+    "specificity": 0.5774,
+    "balanced_accuracy": 0.7828,
+    "confident_share": 0.8922,
+    "accuracy_confident": 0.8879
+   },
+   "glaucoma": {
+    "n": 420.0,
+    "positives": 87.0,
+    "auc": 0.82,
+    "accuracy": 0.3238,
+    "sensitivity": 0.954,
+    "specificity": 0.1592,
+    "balanced_accuracy": 0.5566,
+    "confident_share": 0.2524,
+    "accuracy_confident": 0.5472
+   },
+   "dr_grade": {
+    "n": 510,
+    "accuracy": 0.6059,
+    "qwk": 0.826
+   }
+  }
+ },
+ "trained_metrics_val": {
+  "dr_grade_acc": 0.8331,
+  "dr_grade_qwk": 0.8383,
+  "dr_auc": 0.9363,
+  "dr_bal_acc": 0.8777,
+  "glaucoma_auc": 0.9702,
+  "glaucoma_bal_acc": 0.9087,
+  "cataract_auc": 0.9987,
+  "cataract_bal_acc": 0.9962,
+  "score": 0.9359,
+  "epoch": 14.0,
+  "train_loss": {
+   "dr_grade": 0.6223,
+   "dr": 0.3363,
+   "glaucoma": 0.2992,
+   "cataract": 0.3579
+  }
+ },
+ "onnx_vs_torch_max_diff": 1.3113021850585938e-06
 }
