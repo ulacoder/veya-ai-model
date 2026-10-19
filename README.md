@@ -24,10 +24,16 @@ Thresholds and the "doubt zone" (answers inside it are returned as `uncertain` �
 ## Endpoints
 
 - `GET /health` — model status
-- `POST /predict` — multipart field `file` with a JPG/PNG fundus image. Response:
+- `POST /predict?lang=ru|en|kk&explain=true&heatmap=true` — multipart field `file` with a JPG/PNG fundus image. Response:
   - `result` — same keys as v1 (`dr_grade`, `glaucoma`, `cataract`) plus `dr`;
   - `screening` — per disease `probability`, `threshold`, `status` (`positive` / `negative` / `uncertain`) with Russian labels,
-    `dr_stage`, and `overall.status` (`healthy` / `disease_suspected` / `refer`) with a Russian message.
+    `dr_stage`, and `overall.status` (`healthy` / `disease_suspected` / `refer`) with a Russian message;
+  - `explanation` — why the AI answered so: `summary`, per-disease `findings` (`title`, `evidence` sentences,
+    `attention` share per retinal region — optic disc / macula / vascular arcades / periphery, `hotspots` with sector and
+    distance from the macula in disc diameters), `image_quality`, `macula_involved`, and `heatmaps` (Grad-CAM overlays,
+    base64 JPEG) for every flagged disease;
+  - `recommendations` — `urgency` (`routine` / `planned` / `soon` / `urgent`), `timeframe` (e.g. "срочно, в течение 24–72 часов"),
+    `headline`, `by_disease` actions and exams, `general` advice and `red_flags` that need emergency care.
 - `GET /model` — thresholds and test metrics
 - `GET /docs` — interactive API docs
 
@@ -51,6 +57,12 @@ docker run --rm -p 8000:8000 veya-inference
 
 - **Render** (free plan): New → Blueprint → this repo. `render.yaml` sets everything up and redeploys on every push to `master`.
 - **Hugging Face Spaces**: manual workflow `Deploy to Hugging Face Space` (needs `HF_TOKEN` secret; Docker Spaces need a PRO plan).
+
+## Explanations (Grad-CAM without PyTorch)
+
+`tools/add_explain_outputs.py` adds the last feature maps of both TTA passes to `model.onnx` (`feat`, `feat_flip`) and saves
+the head weights to `model_bundle/explain_head.npz`; `explain.py` computes Grad-CAM from them analytically. Probabilities are
+unchanged (checked to 1e-7). Run the tool again after every ONNX export. Adds ~1 s per request and no noticeable memory.
 
 ## After retraining
 
