@@ -21,11 +21,13 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageOps
 
+import explain as EX
+
 BUNDLE_DIR = Path(__file__).resolve().parent / "model_bundle"
 DISCLAIMER = ("Скрининговая оценка ИИ, не диагноз. Окончательное заключение даёт врач-офтальмолог. / "
               "AI screening aid, not a diagnosis.")
 
-app = FastAPI(title="VEYA Fundus Inference API", version="2.0.0")
+app = FastAPI(title="VEYA Fundus Inference API", version="2.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -224,8 +226,16 @@ async def predict(file: UploadFile = File(...)):
         print(f"[INFERENCE] Image loaded: {image.size}, file: {file.filename}")
 
         names = [o.name for o in session.get_outputs()]
-        outputs = dict(zip(names, session.run(names, {"image": preprocess(image, config)})))
+        x = preprocess(image, config)
+        outputs = dict(zip(names, session.run(names, {"image": x})))
         response = v2_response(outputs, config) if is_v2(config) else legacy_response(outputs, config)
+        if is_v2(config):
+            try:
+                ex = EX.explain(x, outputs.get("feat"), response["screening"], BUNDLE_DIR)
+                response["explanation"] = ex
+                response["recommendations"] = EX.recommendations(response["screening"], ex["image_quality"])
+            except Exception as exc:  # explanations must never break the core answer
+                print(f"[EXPLAIN] failed: {exc}")
         response["inference_seconds"] = round(time.time() - start_time, 2)
         print(f"[INFERENCE] {response.get('screening', {}).get('overall', response['result'])} "
               f"in {response['inference_seconds']}s")
