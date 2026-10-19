@@ -1,0 +1,9 @@
+# for tools/export_ensemble.py (runs on a laptop or in Colab, not on the server)
+torch
+timm
+onnx
+onnxruntime==1.20.1
+opencv-python-headless
+scikit-learn
+pandas
+numpy

@@ -9,6 +9,7 @@ Two bundle formats are supported (picked from model_bundle/model_config.json):
                  thresholds and a "doubt zone" so the API can answer healthy / suspected / refer.
   * legacy     — the original EfficientNet-B4 export (raw logits, ImageNet normalisation here).
 """
+import ctypes
 import json
 import os
 import time
@@ -21,9 +22,11 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageOps
 
+import ensemble as ens
 import explain
 
 BUNDLE_DIR = Path(__file__).resolve().parent / "model_bundle"
+ENSEMBLE_DIR = BUNDLE_DIR / "ensemble"
 DISCLAIMER = ("Скрининговая оценка ИИ, не диагноз. Окончательное заключение даёт врач-офтальмолог. / "
               "AI screening aid, not a diagnosis.")
 
@@ -39,10 +42,21 @@ app.add_middleware(
 _session = None
 _config = None
 _cam_head = None
+_ensemble = None
+
+
+def use_ensemble() -> bool:
+    return (ENSEMBLE_DIR / "ensemble.json").exists() and os.environ.get("VEYA_ENSEMBLE", "1") != "0"
 
 
 def get_runtime():
-    global _session, _config
+    """(session, config) for the single model, or (Ensemble, config) when model_bundle/ensemble/ is present."""
+    global _session, _config, _ensemble
+    if use_ensemble():
+        if _ensemble is None:
+            _ensemble = ens.Ensemble(ENSEMBLE_DIR, crop_fundus)
+            release_memory()
+        return _ensemble, _ensemble.config
     if _session is None:
         with open(BUNDLE_DIR / "model_config.json", encoding="utf-8") as f:
             _config = json.load(f)
@@ -60,9 +74,13 @@ def get_cam_head():
     """Head weights for Grad-CAM; None when the bundle was not prepared with tools/add_explain_outputs.py."""
     global _cam_head
     if _cam_head is None:
-        session, _ = get_runtime()
-        names = {o.name for o in session.get_outputs()}
-        path = BUNDLE_DIR / "explain_head.npz"
+        runtime, _ = get_runtime()
+        if isinstance(runtime, ens.Ensemble):
+            path = ENSEMBLE_DIR / "explain_head.npz"
+            names = {"feat", "feat_flip"} if path.exists() else set()
+        else:
+            names = {o.name for o in runtime.get_outputs()}
+            path = BUNDLE_DIR / "explain_head.npz"
         if {"feat", "feat_flip"} <= names and path.exists():
             _cam_head = explain.CamHead(path)
         else:
@@ -70,8 +88,16 @@ def get_cam_head():
     return _cam_head or None
 
 
+def release_memory():
+    """Give freed activation buffers back to the OS so RSS does not creep up on a 512 MB instance."""
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except OSError:  # not glibc (macOS / Windows dev machines)
+        pass
+
+
 def is_v2(config: dict) -> bool:
-    return config.get("format") == "veya-v2"
+    return config.get("format") in ("veya-v2", "veya-ensemble")
 
 
 def model_name(config: dict) -> str:
@@ -214,9 +240,13 @@ def root():
 def health():
     try:
         _, config = get_runtime()
-        targets = list(config["outputs"]) if is_v2(config) else config["targets"]
-        return {"status": "ok", "device": "cpu", "runtime": "onnxruntime", "model": model_name(config),
+        targets = ["dr_grade", "dr", "glaucoma", "cataract"] if is_v2(config) else config["targets"]
+        info = {"status": "ok", "device": "cpu", "runtime": "onnxruntime", "model": model_name(config),
                 "targets": targets, "explanations": bool(get_cam_head())}
+        if config.get("format") == "veya-ensemble":
+            info["ensemble"] = {"models": [ens.MODEL_LABELS.get(m["key"], m["key"]) for m in config["models"]],
+                                "decision": "brain"}
+        return info
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Model unavailable: {exc}") from exc
 
@@ -225,7 +255,7 @@ def health():
 def model_info():
     """Model card: thresholds and honest test metrics (v2 bundles)."""
     _, config = get_runtime()
-    keys = ("model_name", "backbone", "image_size", "thresholds", "doubt_zones", "metrics")
+    keys = ("model_name", "backbone", "models", "decision", "image_size", "thresholds", "doubt_zones", "metrics")
     return {k: config[k] for k in keys if k in config}
 
 
@@ -241,19 +271,27 @@ async def predict(
 
     try:
         start_time = time.time()
-        session, config = get_runtime()
+        runtime, config = get_runtime()
         image = ImageOps.exif_transpose(Image.open(BytesIO(await file.read())))
         print(f"[INFERENCE] Image loaded: {image.size}, file: {file.filename}")
 
-        names = [o.name for o in session.get_outputs()]
-        x = preprocess(image, config)
-        outputs = dict(zip(names, session.run(names, {"image": x})))
+        members = None
+        if isinstance(runtime, ens.Ensemble):
+            outputs, rgb, members = runtime.predict(image)
+        else:
+            names = [o.name for o in runtime.get_outputs()]
+            x = preprocess(image, config)
+            outputs = dict(zip(names, runtime.run(names, {"image": x})))
+            rgb = x[0].transpose(1, 2, 0)
         response = v2_response(outputs, config) if is_v2(config) else legacy_response(outputs, config)
+        if members:
+            response["ensemble"] = {"decision": "brain", "models": members}
         cam_head = get_cam_head() if is_v2(config) else None
         if explain_answer and cam_head:
             response["explanation"], response["recommendations"] = explain.explain(
-                x[0].transpose(1, 2, 0), outputs, response["screening"], cam_head, lang, with_images=heatmap)
+                rgb, outputs, response["screening"], cam_head, lang, with_images=heatmap, members=members)
         response["inference_seconds"] = round(time.time() - start_time, 2)
+        release_memory()
         print(f"[INFERENCE] {response.get('screening', {}).get('overall', response['result'])} "
               f"in {response['inference_seconds']}s")
         return response

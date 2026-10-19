@@ -58,6 +58,25 @@ docker run --rm -p 8000:8000 veya-inference
 - **Render** (free plan): New → Blueprint → this repo. `render.yaml` sets everything up and redeploys on every push to `master`.
 - **Hugging Face Spaces**: manual workflow `Deploy to Hugging Face Space` (needs `HF_TOKEN` secret; Docker Spaces need a PRO plan).
 
+## Ensemble: three models + the brain
+
+When `model_bundle/ensemble/` exists the server switches to the full VEYA v2 ensemble by itself
+(`VEYA_ENSEMBLE=0` forces the single model). EfficientNetV2-S, ConvNeXt-Small and ViT-B/14 DINOv2 each give their
+opinion; the MLP "brain" (NumPy port of `training/veya_v2/brain.py`) takes their probabilities and embeddings and
+**always makes the final decision**. `/predict` then also returns `ensemble.models` (each network's opinion) and
+the explanation names the brain's decision; `/health` shows `"ensemble": {..., "decision": "brain"}`.
+
+Build the bundle from the training checkpoints (`best.pt` of each model and `brain.pt`, any folder layout):
+
+```bash
+pip install -r tools/requirements-ensemble.txt
+python tools/export_ensemble.py --src path/to/unzipped_checkpoints
+```
+
+If no EfficientNetV2-S `best.pt` is found, the deployed `model_bundle/model.onnx` is reused. ConvNeXt and ViT are
+int8-quantized (drift ≤ 0.0002 in probability); weights live in `*.weights` files that ONNX Runtime memory-maps,
+so peak anonymous RAM stays ~360 MB, the same as the single model, and a request takes ~3 s on one CPU core.
+
 ## Explanations (Grad-CAM without PyTorch)
 
 `tools/add_explain_outputs.py` adds the last feature maps of both TTA passes to `model.onnx` (`feat`, `feat_flip`) and saves
