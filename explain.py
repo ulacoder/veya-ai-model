@@ -507,8 +507,9 @@ def _colormap(v: np.ndarray) -> np.ndarray:
     return out
 
 
-def heatmap_image(rgb: np.ndarray, att: np.ndarray, mask: np.ndarray, size: int = 384) -> str:
-    a = np.clip((att - 0.15) / 0.85, 0, 1)
+def heatmap_image(rgb: np.ndarray, att: np.ndarray, mask: np.ndarray, size: int = 384, strength: float = 1.0) -> str:
+    """strength < 1 dims the map when the model sees little (a healthy eye should look almost dark)."""
+    a = np.clip((att - 0.15) / 0.85, 0, 1) * strength
     alpha = (a ** 0.8 * 0.75)[..., None]
     over = rgb * (1 - alpha) + _colormap(a) * alpha
     over = np.where(mask[..., None], over, 0)
@@ -582,7 +583,9 @@ def explain(rgb: np.ndarray, outputs: dict, screening: dict, cam_head: CamHead, 
         heatmap_disease=main,
     )
     if with_images:
-        out["heatmaps"] = {k: heatmap_image(rgb, cams[k], an["mask"]) for k in DISEASES
+        strength = {k: float(np.clip(screening[k]["probability"] / max(screening[k]["threshold"], 1e-3), 0.2, 1.0))
+                    for k in DISEASES}
+        out["heatmaps"] = {k: heatmap_image(rgb, cams[k], an["mask"], strength=strength[k]) for k in DISEASES
                            if k == main or screening[k]["status"] != "negative"}
         out["heatmap"] = out["heatmaps"][main]
     rec = recommendations(screening, stage, macula, quality, lang)
