@@ -414,6 +414,8 @@ def disease_recommendation(key: str, status: str, stage: int, macula: bool, lang
         if macula:
             r["urgency"] = URGENCY_ORDER[max(URGENCY_ORDER.index(r["urgency"]), URGENCY_ORDER.index("urgent"))]
             r["timeframe"] = L({"ru": "в течение 7 дней", "en": "within 7 days", "kk": "7 күн ішінде"})
+            plain_oct = L({"ru": "ОКТ макулы", "en": "Macular OCT", "kk": "Макуланың ОКТ-сы"})
+            r["exams"] = [e for e in r["exams"] if e != plain_oct]
             r["exams"].append(L({"ru": "ОКТ макулы — исключить макулярный отёк", "en": "Macular OCT to rule out macular oedema",
                                  "kk": "Макулярлық ісінуді жоққа шығару үшін макуланың ОКТ-сы"}))
         return r
