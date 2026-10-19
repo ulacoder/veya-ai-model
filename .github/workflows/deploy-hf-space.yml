@@ -17,9 +17,9 @@ jobs:
       - name: Prepare Space files
         run: |
           mkdir -p space
-          cp Dockerfile main.py requirements.txt space/
+          cp Dockerfile main.py explain.py requirements.txt space/
           mkdir -p space/model_bundle
-          cp model_bundle/model.onnx model_bundle/model_config.json space/model_bundle/
+          cp model_bundle/model.onnx model_bundle/model_config.json model_bundle/explain_head.npz space/model_bundle/
           cp deploy/huggingface/README.md space/README.md
 
       - name: Upload to Hugging Face

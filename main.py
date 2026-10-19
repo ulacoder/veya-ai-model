@@ -17,15 +17,17 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageOps
+
+import explain
 
 BUNDLE_DIR = Path(__file__).resolve().parent / "model_bundle"
 DISCLAIMER = ("Скрининговая оценка ИИ, не диагноз. Окончательное заключение даёт врач-офтальмолог. / "
               "AI screening aid, not a diagnosis.")
 
-app = FastAPI(title="VEYA Fundus Inference API", version="2.0.0")
+app = FastAPI(title="VEYA Fundus Inference API", version="2.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,6 +38,7 @@ app.add_middleware(
 
 _session = None
 _config = None
+_cam_head = None
 
 
 def get_runtime():
@@ -51,6 +54,20 @@ def get_runtime():
             str(BUNDLE_DIR / "model.onnx"), opts, providers=["CPUExecutionProvider"]
         )
     return _session, _config
+
+
+def get_cam_head():
+    """Head weights for Grad-CAM; None when the bundle was not prepared with tools/add_explain_outputs.py."""
+    global _cam_head
+    if _cam_head is None:
+        session, _ = get_runtime()
+        names = {o.name for o in session.get_outputs()}
+        path = BUNDLE_DIR / "explain_head.npz"
+        if {"feat", "feat_flip"} <= names and path.exists():
+            _cam_head = explain.CamHead(path)
+        else:
+            _cam_head = False
+    return _cam_head or None
 
 
 def is_v2(config: dict) -> bool:
@@ -178,7 +195,7 @@ def preload_model():
     # Load weights at boot so the first /predict from the platform isn't slow.
     try:
         get_runtime()
-        print("[STARTUP] Model loaded")
+        print(f"[STARTUP] Model loaded, explanations: {'on' if get_cam_head() else 'off'}")
     except Exception as exc:  # health check will report it
         print(f"[STARTUP] Model failed to load: {exc}")
 
@@ -189,7 +206,7 @@ def root():
         "service": "VEYA Fundus Inference API",
         "version": app.version,
         "status": "online",
-        "endpoints": {"health": "/health", "docs": "/docs", "predict": "/predict", "model": "/model"},
+        "endpoints": {"health": "/health", "docs": "/docs", "predict": "/predict?lang=ru&explain=true", "model": "/model"},
     }
 
 
@@ -199,7 +216,7 @@ def health():
         _, config = get_runtime()
         targets = list(config["outputs"]) if is_v2(config) else config["targets"]
         return {"status": "ok", "device": "cpu", "runtime": "onnxruntime", "model": model_name(config),
-                "targets": targets}
+                "targets": targets, "explanations": bool(get_cam_head())}
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Model unavailable: {exc}") from exc
 
@@ -213,7 +230,12 @@ def model_info():
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(
+    file: UploadFile = File(...),
+    lang: str = Query("ru", description="Language of explanation and recommendations: ru, en, kk"),
+    explain_answer: bool = Query(True, alias="explain", description="Add Grad-CAM explanation and recommendations"),
+    heatmap: bool = Query(True, description="Include heatmap images (base64 JPEG) in the explanation"),
+):
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=415, detail="Upload a JPG, PNG, or other image file")
 
@@ -224,8 +246,13 @@ async def predict(file: UploadFile = File(...)):
         print(f"[INFERENCE] Image loaded: {image.size}, file: {file.filename}")
 
         names = [o.name for o in session.get_outputs()]
-        outputs = dict(zip(names, session.run(names, {"image": preprocess(image, config)})))
+        x = preprocess(image, config)
+        outputs = dict(zip(names, session.run(names, {"image": x})))
         response = v2_response(outputs, config) if is_v2(config) else legacy_response(outputs, config)
+        cam_head = get_cam_head() if is_v2(config) else None
+        if explain_answer and cam_head:
+            response["explanation"], response["recommendations"] = explain.explain(
+                x[0].transpose(1, 2, 0), outputs, response["screening"], cam_head, lang, with_images=heatmap)
         response["inference_seconds"] = round(time.time() - start_time, 2)
         print(f"[INFERENCE] {response.get('screening', {}).get('overall', response['result'])} "
               f"in {response['inference_seconds']}s")
