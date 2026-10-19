@@ -230,7 +230,9 @@ def disease_report(y, p, thr, zone):
 
 # ============================================================================ main
 def run_brain(models=("effv2s", "convnext", "vit"), data_dir="/content/veya_data",
-              drive_dir="/content/drive/MyDrive/veya_v2", folds=5, seeds=3, device=None):
+              drive_dir="/content/drive/MyDrive/veya_v2", folds=5, seeds=3, device=None, always_brain=True):
+    """always_brain=True: the brain makes every final decision (thresholds are tuned on its own outputs).
+    False: per disease, fall back to the plain average where the brain is not better on val."""
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     pred_dir = Path(drive_dir) / "preds"
     labels = pd.read_csv(Path(data_dir) / "labels.csv").set_index("image_id")
@@ -265,8 +267,8 @@ def run_brain(models=("effv2s", "convnext", "vit"), data_dir="/content/veya_data
             continue
         cmp[k] = dict(brain_auc=roc_auc_score(yv[m, j + 1], oof_b[m, j]),
                       average_auc=roc_auc_score(yv[m, j + 1], avg_b[m, j]))
-        # честный выбор по val: мозг используется только там, где он реально лучше усреднения
-        use_brain[k] = bool(cmp[k]["brain_auc"] > cmp[k]["average_auc"])
+        # по умолчанию решает мозг; с always_brain=False — только там, где он лучше усреднения на val
+        use_brain[k] = True if always_brain else bool(cmp[k]["brain_auc"] > cmp[k]["average_auc"])
         pv = oof_b[m, j] if use_brain[k] else avg_b[m, j]
         thresholds[k] = best_threshold(yv[m, j + 1], pv)
         zones[k] = doubt_zone(yv[m, j + 1], pv, thresholds[k])

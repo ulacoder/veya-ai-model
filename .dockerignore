@@ -6,3 +6,5 @@ model_bundle/best_model.pth
 model_bundle/training_history.json
 tools
 deploy
+docs
+training

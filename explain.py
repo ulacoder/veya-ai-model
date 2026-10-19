@@ -522,8 +522,16 @@ def heatmap_image(rgb: np.ndarray, att: np.ndarray, mask: np.ndarray, size: int 
 
 
 # ============================================================================ entry point
+def brain_line(key: str, final: float, members: dict, lang: str) -> str:
+    """How each network voted and what the brain decided (ensemble mode)."""
+    votes = ", ".join(f"{m['name']} {_pct(m[key])}%" for m in members.values())
+    return tr({"ru": f"Мнения нейросетей: {votes}. Итоговое решение «мозга» — {_pct(final)}%.",
+               "en": f"Network opinions: {votes}. The brain's final decision: {_pct(final)}%.",
+               "kk": f"Нейрожелілер пікірі: {votes}. «Мидың» соңғы шешімі — {_pct(final)}%."}, lang)
+
+
 def explain(rgb: np.ndarray, outputs: dict, screening: dict, cam_head: CamHead, lang: str = "ru",
-            with_images: bool = True) -> dict:
+            with_images: bool = True, members: dict | None = None) -> dict:
     lang = lang if lang in LANGS else "ru"
     s = rgb.shape[0]
     an = anatomy(rgb)
@@ -550,6 +558,8 @@ def explain(rgb: np.ndarray, outputs: dict, screening: dict, cam_head: CamHead, 
     for k in DISEASES:
         regs = sorted(({"region": r, "share": v} for r, v in focus[k]["shares"].items()), key=lambda r: -r["share"])
         f = disease_finding(k, screening[k], stage, regs, spots[k], macula, quality, focus[k], an, lang)
+        if members:
+            f["evidence"].insert(1, brain_line(k, screening[k]["probability"], members, lang))
         f["attention"] = regs
         f["hotspots"] = spots[k] if screening[k]["status"] != "negative" else []
         findings.append(f)
@@ -560,6 +570,10 @@ def explain(rgb: np.ndarray, outputs: dict, screening: dict, cam_head: CamHead, 
     if flagged:
         summary = tr({"ru": "ИИ обосновывает ответ так: ", "en": "How the AI reached its answer: ", "kk": "ЖИ жауабын былай негіздейді: "}, lang) + \
             "; ".join(f["title"] for f in flagged) + "."
+        if members:
+            summary += " " + tr({"ru": "Решение принял «мозг» на основе трёх нейросетей.",
+                                 "en": "The decision was made by the brain on top of three networks.",
+                                 "kk": "Шешімді үш нейрожелі негізінде «ми» қабылдады."}, lang)
     else:
         summary = tr({"ru": "Ни по одной из трёх болезней ИИ не нашёл значимых изменений: сосуды, диск зрительного нерва и макула выглядят типично для здорового глаза.",
                       "en": "The AI found no significant changes for any of the three diseases: vessels, optic disc and macula look typical of a healthy eye.",
