@@ -12,7 +12,7 @@ next to it, if present). Output goes to model_bundle/ensemble/:
     brain.npz       brain MLPs with BatchNorm folded in, PCA of the embeddings, feature scaling
     ensemble.json   model list, input sizes, thresholds and doubt zones, test metrics
 
-ConvNeXt and ViT are int8-quantized (dynamic, MatMul weights) so the three models fit a 512 MB instance;
+ConvNeXt is int8-quantized (dynamic, MatMul weights); ViT stays fp32 (int8 distorts it). Weights are memory-mapped;
 the script prints how far the quantized outputs drift from PyTorch. --no-quantize keeps everything fp32.
 The final answer is ALWAYS the brain's (its thresholds come from brain.pt).
 """
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -35,7 +36,9 @@ from training.veya_v2 import train as T  # noqa: E402
 OUT = ROOT / "model_bundle" / "ensemble"
 ORDER = ["effv2s", "convnext", "vit"]
 CAM_MODEL = "effv2s"
-QUANTIZE = {"convnext", "vit"}
+# ViT stays fp32: DINOv2 has outlier activations, and dynamic int8 moved its glaucoma probability by up to 0.2 on
+# real fundus photos (ConvNeXt int8 stays within ~0.01). Weights are memory-mapped, so fp32 ViT costs disk, not RAM.
+QUANTIZE = set(filter(None, os.environ.get("VEYA_QUANTIZE", "convnext").split(",")))
 
 
 class Wrapper(nn.Module):
@@ -96,7 +99,7 @@ def find_checkpoints(src: Path) -> tuple[dict, Path]:
         if key in T.MODELS:
             ckpts[key] = (p, ck)
             print(f"  {key:9s} ← {p}  (val score {ck.get('metrics', {}).get('score', float('nan')):.4f})")
-    brains = sorted(src.rglob("brain.pt"))
+    brains = sorted(src.rglob("brain_v3.pt")) or sorted(src.rglob("brain.pt"))
     if not brains:
         sys.exit("brain.pt not found under --src")
     return ckpts, brains[0]
@@ -125,7 +128,12 @@ def export_model(key: str, ck: dict, quantize: bool) -> dict:
         graph = onnx.load(str(pre), load_external_data=False).graph
         keep = [n.name for n in graph.node if "/neck" in n.name or "/heads" in n.name]
         keep += [f"{name}_MatMul" for name in keep]  # the quantizer renames Gemm → MatMul
+        skip = [t for t in os.environ.get("VEYA_Q_SKIP", "").split(",") if t]
+        if skip:  # e.g. attention projections, which carry most of the int8 error in ViT
+            extra = [n.name for n in graph.node if any(t in n.name for t in skip)]
+            keep += extra + [f"{name}_MatMul" for name in extra]
         quantize_dynamic(str(pre), str(final), weight_type=QuantType.QInt8, op_types_to_quantize=["MatMul"],
+                         per_channel=os.environ.get("VEYA_Q_PER_CHANNEL", "1") == "1",
                          nodes_to_exclude=keep, extra_options={"DefaultTensorType": onnx.TensorProto.FLOAT})
         fp32.unlink()
         pre.unlink()
@@ -201,7 +209,7 @@ def export_brain(path: Path, models: list[str]) -> dict:
     ck = torch.load(path, map_location="cpu", weights_only=False)
     assert list(ck["models"]) == models, f"brain was trained on {ck['models']}, checkpoints found for {models}"
     arrays = {"mu": np.asarray(ck["mu"], np.float32), "sd": np.asarray(ck["sd"], np.float32)}
-    for m in models:
+    for m in (models if ck.get("pca") else []):  # brain v3 takes logits only, no PCA of embeddings
         comps, mean = ck["pca"][m]
         arrays[f"pca_{m}_components"] = np.asarray(comps, np.float32)
         arrays[f"pca_{m}_mean"] = np.asarray(mean, np.float32)

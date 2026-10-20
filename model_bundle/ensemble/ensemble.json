@@ -1,0 +1,58 @@
+{
+ "format": "veya-ensemble",
+ "model_name": "veya-v2-brain-ensemble",
+ "decision": "brain",
+ "models": [
+  {
+   "key": "effv2s",
+   "file": "effv2s.onnx",
+   "size": 512,
+   "timm": "tf_efficientnetv2_s.in21k_ft_in1k"
+  },
+  {
+   "key": "convnext",
+   "file": "convnext.onnx",
+   "size": 384,
+   "timm": "convnext_small.fb_in22k_ft_in1k_384"
+  },
+  {
+   "key": "vit",
+   "file": "vit.onnx",
+   "size": 224,
+   "timm": "vit_base_patch14_dinov2.lvd142m"
+  }
+ ],
+ "cam_model": "effv2s",
+ "image_size": 512,
+ "dr_grade_names": [
+  "нет ДР",
+  "лёгкая",
+  "умеренная",
+  "тяжёлая",
+  "пролиферативная"
+ ],
+ "brain": {
+  "file": "brain.npz",
+  "n_nets": 6
+ },
+ "thresholds": {
+  "dr": 0.2670206466317179,
+  "glaucoma": 0.28113946616649643,
+  "cataract": 0.08736967518925778
+ },
+ "doubt_zones": {
+  "dr": [
+   0.07702064663171787,
+   0.4570206466317179
+  ],
+  "glaucoma": [
+   0.05613946616649643,
+   0.5061394661664964
+  ],
+  "cataract": [
+   0.08736967518925778,
+   0.08736967518925778
+  ]
+ },
+ "metrics": {}
+}

@@ -2,7 +2,7 @@
 
 Files come from tools/export_ensemble.py (model_bundle/ensemble/). Each base model sees the fundus cropped
 and resized to its own input size; the brain (NumPy port of training/veya_v2/brain.py) takes every model's
-DR-stage probabilities, disease logits and PCA-compressed embedding and returns the final probabilities.
+DR-stage probabilities and disease logits (brain v1 also PCA-compressed embeddings) and returns the final probabilities.
 The final answer is always the brain's.
 """
 from __future__ import annotations
@@ -40,7 +40,8 @@ class Brain:
         w = np.load(path)
         self.models = models
         self.mu, self.sd = w["mu"], w["sd"]
-        self.pca = {m: (w[f"pca_{m}_components"], w[f"pca_{m}_mean"]) for m in models}
+        # brain v1 also took PCA-compressed embeddings; brain v3 takes only each model's logits
+        self.pca = {m: (w[f"pca_{m}_components"], w[f"pca_{m}_mean"]) for m in models if f"pca_{m}_components" in w}
         self.nets = []
         for i in range(int(w["n_nets"])):
             layers = [(w[f"net{i}_w{j}"], w[f"net{i}_b{j}"]) for j in range(3)]
@@ -51,8 +52,10 @@ class Brain:
         cols = []
         for m in self.models:
             o = opinions[m]
-            comps, mean = self.pca[m]
-            cols += [_softmax(o["grade_logits"]), o["bin_logits"], (o["emb"] - mean) @ comps.T]
+            cols += [_softmax(o["grade_logits"]), o["bin_logits"]]
+            if m in self.pca:
+                comps, mean = self.pca[m]
+                cols.append((o["emb"] - mean) @ comps.T)
         x = (np.concatenate(cols).astype(np.float32) - self.mu) / self.sd
         base = np.concatenate([np.mean([opinions[m]["grade_logits"] for m in self.models], 0),
                                np.mean([opinions[m]["bin_logits"] for m in self.models], 0)])
@@ -86,8 +89,15 @@ class Ensemble:
     def predict(self, image: Image.Image) -> tuple[dict, np.ndarray, dict]:
         """→ (outputs in the single-model layout + feat maps of the CAM model, CAM model input RGB, per-model opinions)."""
         opinions, cam_out, cam_rgb = {}, None, None
+        # Same pipeline as training: crop once to the 512 px cache size, then shrink to each model's input
+        base_size = int(self.config.get("cache_size", 512))
+        base = self.crop(image, base_size)
         for key, size, sess, names in self.members:
-            rgb = self.crop(image, size)
+            if size == base_size:
+                rgb = base
+            else:
+                small = Image.fromarray(base.astype(np.uint8)).resize((size, size), Image.BOX)
+                rgb = np.asarray(small, dtype=np.float32)
             out = dict(zip(names, sess.run(names, {"image": rgb.transpose(2, 0, 1)[None]})))
             opinions[key] = {"grade_logits": out["grade_logits"][0].astype(np.float64),
                              "bin_logits": out["bin_logits"][0].astype(np.float64),

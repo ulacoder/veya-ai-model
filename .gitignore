@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .venv/
+
+# full ViT weights are rebuilt from vit.weights.part-* (GitHub 100 MB limit)
+model_bundle/ensemble/vit.weights

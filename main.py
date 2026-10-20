@@ -220,7 +220,12 @@ def legacy_response(outputs: dict, config: dict) -> dict:
 def preload_model():
     # Load weights at boot so the first /predict from the platform isn't slow.
     try:
-        get_runtime()
+        runtime, _ = get_runtime()
+        if isinstance(runtime, ens.Ensemble):
+            # one warm-up pass touches every model: if memory is short the boot fails here, before the health
+            # check passes, so the host keeps serving the previous version instead of crashing on a patient photo
+            runtime.predict(Image.new("RGB", (1024, 1024), (150, 70, 40)))
+            release_memory()
         print(f"[STARTUP] Model loaded, explanations: {'on' if get_cam_head() else 'off'}")
     except Exception as exc:  # health check will report it
         print(f"[STARTUP] Model failed to load: {exc}")
