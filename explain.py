@@ -276,11 +276,17 @@ def disease_finding(key: str, st: dict, stage: int, regions: list, spots: list, 
 
     if key == "dr":
         if status != "negative":
-            st_name = tr(T["stage"][max(stage, 1)], lang)
-            signs = tr(T["stage_signs"][max(stage, 1)], lang)
-            ev.append(tr({"ru": f"Картина соответствует стадии «{st_name}». Для неё характерны: {signs}.",
-                          "en": f"The picture matches the “{st_name}” stage, typically: {signs}.",
-                          "kk": f"Көрініс «{st_name}» сатысына сәйкес. Оған тән: {signs}."}, lang))
+            if stage >= 1:
+                st_name = tr(T["stage"][stage], lang)
+                signs = tr(T["stage_signs"][stage], lang)
+                ev.append(tr({"ru": f"Картина соответствует стадии «{st_name}». Для неё характерны: {signs}.",
+                              "en": f"The picture matches the “{st_name}” stage, typically: {signs}.",
+                              "kk": f"Көрініс «{st_name}» сатысына сәйкес. Оған тән: {signs}."}, lang))
+            else:
+                # the stage head still favours "no DR": say so instead of inventing a stage
+                ev.append(tr({"ru": "Стадию ИИ уверенно не определил: по оценке стадий явных изменений не видно, но признаки ретинопатии возможны — стадию уточнит врач.",
+                              "en": "The AI could not settle the stage: the stage estimate shows no clear changes, but signs of retinopathy are possible — the doctor will determine the stage.",
+                              "kk": "ЖИ сатыны сенімді анықтамады: айқын өзгерістер көрінбейді, бірақ ретинопатия белгілері болуы мүмкін — сатысын дәрігер нақтылайды."}, lang))
             for i, h in enumerate(spots, 1):
                 reg = tr(T["regions"][h["region"]], lang)
                 sec = tr(T["quadrants"][h["sector"]], lang)
@@ -471,7 +477,7 @@ def recommendations(screening: dict, stage: int, macula: bool, quality: dict, la
     else:
         urgency = "routine"
         timeframe = L({"ru": "через 12 месяцев", "en": "in 12 months", "kk": "12 айдан кейін"})
-        headline = L({"ru": "Повторный скрининг через год", "en": "Repeat screening in one year", "kk": "Бір жылдан кейін қайта скрининг"})
+        headline = L({"ru": "Плановый повторный скрининг", "en": "Routine repeat screening", "kk": "Жоспарлы қайта скрининг"})
 
     general = []
     if per:
